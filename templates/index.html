@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>neurosense</title>
+<style>
+  :root {
+    --primary-gradient: linear-gradient(145deg, #2d3436, #1a1a1a);
+    --accent-gradient: linear-gradient(145deg, #4ade80, #22c55e);
+    --accent-glow: rgba(74, 222, 128, 0.3);
+    --glass-bg: rgba(255, 255, 255, 0.08);
+    --shadow-color: rgba(0, 0, 0, 0.25);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-radius: 24px;
+  }
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    background: var(--primary-gradient);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: white;
+    line-height: 1.5;
+  }
+  
+  .main-container {
+    width: 100%;
+    height: 100vh;
+    padding: 1.5rem;
+  }
+  
+  .content-wrapper {
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) 2fr;
+    gap: 1.5rem;
+    height: 100%;
+  }
+  
+  .info-column {
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: 1.5rem;
+    height: 100%;
+  }
+  
+  .webcam-column {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 1.5rem;
+    height: 100%;
+  }
+  
+  .glass-box {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: 
+      0 8px 32px var(--shadow-color),
+      inset 0 2px 2px rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+  }
+  
+  .map-container {
+    aspect-ratio: 16/9;
+    overflow: hidden;
+  }
+  
+  #map {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: calc(var(--border-radius) - 2px);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .status-container {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+  
+  .status-dot {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--accent-gradient);
+    box-shadow: 0 0 40px var(--accent-glow);
+  }
+  
+  .status-info {
+    flex: 1;
+  }
+  
+  .distance-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(to bottom, #fff, rgba(255, 255, 255, 0.8));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .status-label {
+    font-size: 1rem;
+    font-weight: 600;
+    opacity: 0.8;
+  }
+  
+  .info-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+  }
+  
+  .info-box p {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+  }
+  
+  .info-box span {
+    font-weight: 600;
+    padding: 0.4rem 0.8rem;
+    border-radius: 12px;
+    background: var(--glass-bg);
+  }
+  
+  .webcam-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+  }
+  
+  #webcam {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+  }
+  
+  .control-panel {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .control-button {
+    flex: 1;
+    background: var(--accent-gradient);
+    color: white;
+    border: none;
+    padding: 0.8rem;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  @media (max-width: 1024px) {
+    .content-wrapper {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+    }
+    
+    .info-column {
+      grid-template-rows: auto auto auto;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="main-container">
+  <div class="content-wrapper">
+    <div class="info-column">
+      <div class="glass-box map-container">
+        <img src="{{ url_for('static', filename='nijika.png') }}" alt="Nijika" id="map" />
+      </div>
+      
+      <div class="glass-box status-container">
+        <div class="status-dot">
+          <span id="distance" class="distance-value">-- psi</span>
+        </div>
+        <div class="status-info">
+          <div id="status-label" class="status-label">대기 중</div>
+        </div>
+      </div>
+      
+      <div class="glass-box info-box">
+        <p>현재 감지된 거리: <span id="distance-value">-- psi</span></p>
+        <p>현재 감정: <span id="color-value">--</span></p>
+        <p>눈 깜빡임 상태: <span id="blink-status">--</span></p>
+        <p>분당 눈 깜빡임: <span id="blink-rate">--</span> 회</p>
+      </div>
+    </div>
+    
+    <div class="webcam-column">
+      <div class="webcam-container">
+        <img id="webcam" src="{{ url_for('video_feed') }}" />
+      </div>
+      
+      <div class="control-panel">
+        <button class="control-button" onclick="toggleDetection()">탐지 시작</button>
+        <button class="control-button" onclick="toggleRecording()">녹음 시작</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Socket.IO 연결 설정
+    const socket = io();
+
+    // 상태 관리를 위한 전역 변수
+    let isDetecting = false;
+    let isRecording = false;
+
+    // DOM 요소 참조
+    const webcamElement = document.getElementById('webcam');
+    const distanceElement = document.getElementById('distance');
+    const distanceValueElement = document.getElementById('distance-value');
+    const blinkStatusElement = document.getElementById('blink-status');
+    const blinkRateElement = document.getElementById('blink-rate');
+    const statusLabelElement = document.getElementById('status-label');
+    const colorValueElement = document.getElementById('color-value');
+    
+    // 웹캠 초기화 함수
+    async function initWebcam() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: "user"
+                }
+            });
+            webcamElement.srcObject = stream;
+            await webcamElement.play();
+        } catch (error) {
+            console.error('웹캠 초기화 실패:', error);
+            statusLabelElement.textContent = '웹캠 초기화 실패';
+        }
+    }
+
+    // 녹음 토글 함수
+    window.toggleRecording = function() {
+        const button = document.querySelector('.control-button:nth-child(2)');
+        
+        if (!isRecording) {
+            socket.emit('start_recording');
+            isRecording = true;
+            button.textContent = '녹음 중지';
+            button.style.background = 'var(--accent-gradient)';
+            statusLabelElement.textContent = '녹음 중...';
+        } else {
+            socket.emit('stop_recording');
+            isRecording = false;
+            button.textContent = '녹음 시작';
+            button.style.background = 'var(--accent-gradient)';
+            statusLabelElement.textContent = '녹음 종료';
+        }
+    }
+
+    // 탐지 토글 함수
+    window.toggleDetection = function() {
+        const button = document.querySelector('.control-button:nth-child(1)');
+        
+        if (!isDetecting) {
+            isDetecting = true;
+            button.textContent = '탐지 중지';
+            statusLabelElement.textContent = '탐지 중...';
+        } else {
+            isDetecting = false;
+            button.textContent = '탐지 시작';
+            statusLabelElement.textContent = '대기 중';
+            resetUI();
+        }
+    }
+
+    // UI 초기화 함수
+    function resetUI() {
+        distanceElement.textContent = '-- psi';
+        distanceValueElement.textContent = '-- psi';
+        blinkStatusElement.textContent = '--';
+        blinkRateElement.textContent = '--';
+        colorValueElement.textContent = '--';
+    }
+
+    // Socket.IO 이벤트 리스너
+    socket.on('blink_status', (data) => {
+        blinkStatusElement.textContent = data.status;
+    });
+
+    socket.on('blink_rate', (data) => {
+        blinkRateElement.textContent = `${data.rate} 회`;
+        if (data.warning) {
+            blinkRateElement.style.color = '#dc2626';
+        } else {
+            blinkRateElement.style.color = 'inherit';
+        }
+    });
+
+    socket.on('recognition_status', (data) => {
+        console.log('Recognition status:', data.status);
+        statusLabelElement.textContent = data.status;
+    });
+
+    socket.on('recognition_result', (data) => {
+        const infoBox = document.querySelector('.info-box');
+        
+        // 음성 인식 결과 표시
+        const resultElement = document.createElement('p');
+        resultElement.innerHTML = `음성 인식: <span>${data.original_text}</span>`;
+        
+        // 교정된 텍스트가 있는 경우
+        if (data.has_errors) {
+            const correctionElement = document.createElement('p');
+            correctionElement.innerHTML = `교정: <span>${data.corrected_text}</span>`;
+            correctionElement.style.color = '#4ade80';
+            infoBox.insertBefore(correctionElement, infoBox.firstChild);
+        }
+        
+        infoBox.insertBefore(resultElement, infoBox.firstChild);
+        
+        // 최대 5개의 결과만 유지
+        while (infoBox.children.length > 5) {
+            infoBox.removeChild(infoBox.lastChild);
+        }
+    });
+
+    socket.on('recognition_error', (data) => {
+        console.error('Recognition error:', data.error);
+        statusLabelElement.textContent = `Error: ${data.error}`;
+    });
+
+    // 웹캠 초기화 실행
+    initWebcam().then(() => {
+        console.log('웹캠 초기화 완료');
+    }).catch((error) => {
+        console.error('웹캠 초기화 중 오류:', error);
+    });
+  });
+</script>
+</body>
+</html>
